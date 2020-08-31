@@ -14,30 +14,34 @@ const {web_server_url} = require('../url')
 io.on('connection', (socket) => {
   //방 입장시
   socket.on('joinRoom', ({username, room, avatarId}) => {
+    if (room === undefined) room = username;
     const user = userJoin(socket.id, username, room, avatarId);
     const roomUsers = getRoomUsers(user.room);
 
     socket.join(user.room);
-    // console.log(Object.keys(roomUsers).length);
-    // console.log(roomUsers);
-    if(Object.keys(roomUsers).length === 2){
-      console.log('game start');
-
-      // setTimeout(() => {
-      //   socket.emit('start', true);
-      //   socket.broadcast.to(user.room).emit('start',false);
-      // }, 3000);
+    if (Object.keys(roomUsers).length === 2){
+      setTimeout(() => {
+        socket.emit('start', true);
+        socket.broadcast.to(user.room).emit('start',false);
+      }, 3000);
     }
     io.to(user.room).emit('loadUsers', roomUsers);
 
-    setTimeout(() => {
-      if(Object.keys(roomUsers).length !== 2){
-        io.to(user.room).emit('connectError');
-        console.log('disconnect');
-        socket.disconnect();
-      }
-    }, 3000)
+    // setTimeout(() => {
+    //   if(Object.keys(roomUsers).length !== 2){
+    //     io.to(user.room).emit('connectError');
+    //     console.log('disconnect');
+    //     socket.disconnect();
+    //   }
+    // }, 3000)
   });
+  
+  socket.on('computerMode', () => {
+    setTimeout(() => {
+      socket.emit('start', true);
+    }, 3000);
+  })
+
   socket.on('sendEmoji', (data)=>{
     let user = getCurrentUser(socket.id);
     socket.broadcast.to(user.room).emit('getEmoji', data);
@@ -54,7 +58,6 @@ io.on('connection', (socket) => {
 
   // mouse move
   socket.on('shot', (x) => {
-    console.log(x)
     //내화면
     // console.log(x);
     let user = getCurrentUser(socket.id);
@@ -66,7 +69,6 @@ io.on('connection', (socket) => {
   socket.on('score', (res) => {
     let user = getCurrentUser(socket.id);
     let users = getRoomUsers(user.room);
-    console.log(user.username+ ' '+ res);
     // socket.emit('myShot', res);
     socket.broadcast.to(user.room).emit('hit',res);
     if(res === 0){
@@ -95,8 +97,6 @@ io.on('connection', (socket) => {
         // .then(result => console.log(result))
         .catch(err => console.log(err));
       io.to(user.room).emit('end', user.username); 
-      console.log(user.username + ' win!'); 
-
       users.isDone = true;
     }
   });
@@ -112,7 +112,6 @@ io.on('connection', (socket) => {
       // console.log(Object.keys(users).length);
       console.log(users.isDone);
       if (usersID.length === 1 && !users.isDone) {
-        console.log('gg')
         if (users[usersID[0]].username && (users[usersID[0]].username === user.username)) {
           rival = users[usersID[1]].username;
         } else {
@@ -142,7 +141,6 @@ io.on('connection', (socket) => {
       endGame(user.room);
 
     }
-    
 
     console.log('leave');
     if (user) {

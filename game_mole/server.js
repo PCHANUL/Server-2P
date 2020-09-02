@@ -13,11 +13,13 @@ const { gameJoin, getCurrentScores, getCurrentGame, leaveGame } = require('./uti
 const PORT = 3009;
 
 io.on('connect', (socket) => {
-  socket.on('gameStart', (username, gameRoomId) => {
-    let [game, refreshed] = gameJoin(username, gameRoomId, socket.id);
+  socket.on('gameStart', (username, gameRoomId, avatarId, computer) => {
+    if(gameRoomId === null) gameRoomId = username;
+    if(computer) username = computer; 
+    let [game, refreshed] = gameJoin(username, gameRoomId, socket.id, avatarId);
     socket.join(gameRoomId);
-    io.to(gameRoomId).emit('init', [game.usernames, game.currentMole, game.score]);
-    if (game.usernames.length === 2 && refreshed === false) {
+    io.to(gameRoomId).emit('init', [game.usernames, game.currentMole, game.score, game.avatarId]);
+    if (game.usernames.length === 2 && refreshed === false && !computer) {
       const moleTimer = setInterval(() => {
         let randomIndex = Math.floor(Math.random() * 16);
         io.to(gameRoomId).emit('generateMole', randomIndex);
@@ -48,7 +50,11 @@ io.on('connect', (socket) => {
         leaveGame(gameRoomId);
       }, 10000);
     }
+    socket.on('leaveComputerMode', () => {
+      leaveGame(gameRoomId)
+    })
   });
+
   socket.on('moleClick', (data) => {
     let { username, index, currentMole, gameRoomId } = data;
     let currentGame = getCurrentGame(gameRoomId);
@@ -61,6 +67,11 @@ io.on('connect', (socket) => {
       result.index = index;
       io.to(gameRoomId).emit('updateScore', result);
     }
+  });
+
+  socket.on('activateGif', (data) => {
+    const { gameRoomId, gif } = data;
+    socket.broadcast.to(gameRoomId).emit('opponentGif', gif);
   });
 });
 
